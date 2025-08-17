@@ -35,13 +35,13 @@ function connectClient(name) {
     });
 
     ws.on('message', (data) => {
-    const buf = Buffer.isBuffer(data) ? data : Buffer.from(data);
-    const { type, payload } = decodeFrame(buf);
-    if (type === TYPE.UPDATE) {
-        Y.applyUpdate(doc, payload);
-        console.log(`${name} received update:`, Array.from(doc.getMap('drawing').entries()));
-    }
-});
+        const buf = Buffer.isBuffer(data) ? data : Buffer.from(data);
+        const { type, payload } = decodeFrame(buf);
+        if (type === TYPE.UPDATE) {
+            Y.applyUpdate(doc, payload);
+            console.log(`${name} received update:`, Array.from(doc.getMap('drawing').entries()));
+        }
+    });
 
     ws.on('close', () => {
         console.log(`${name} disconnected`);

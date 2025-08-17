@@ -11,6 +11,13 @@
 //          Applies it to the room’s Y.Doc.
 //          Broadcasts that same update to all other clients so they stay synced.
 
+
+// AWARENESS: 0x03
+// 1. What is awareness in Yjs?
+//      It’s ephemeral state per client (like “I’m drawing with a red brush at (100,100)”).
+//      It’s not stored in the Y.Doc because it should vanish when a client disconnects.
+//      It’s updated frequently — much more than the actual document updates — so it’s lightweight.
+
 // We will frame messages like this:
 // [1 byte: type][4 bytes: length][payload: <length> bytes ...]
 
@@ -20,7 +27,8 @@
 
 export const TYPE = {
     SYNC_STATE: 0x01,
-    UPDATE: 0x02
+    UPDATE: 0x02,
+    AWARENESS: 0x03
 }
 
 // Encode: frame

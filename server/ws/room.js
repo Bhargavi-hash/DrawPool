@@ -20,6 +20,7 @@ class Room {
         this.name = name; // Room name
         this.doc = new Y.Doc(); // Yjs document, each room has it's own shared yjs document.
         this.clients = new Set(); // track connected websocket clients
+        this.awarenessStates = new Map(); // ws -> awareness state
     }
 
     // Add a new client to the room
@@ -29,17 +30,24 @@ class Room {
         //  When client closes the connection --> remove it
         ws.on('close', () => {
             this.clients.delete(ws);
+            this.awarenessStates.delete(ws);
+            this.broadcastAwareness();
         });
 
         // Send the current full state as SYNC_STATE to the new client
         const fullState = Y.encodeStateAsUpdate(this.doc);
         ws.send(encodeFrame(TYPE.SYNC_STATE, fullState)); // The new user gets everything happened so far
 
+        this.sendAwareness(ws);
+
         //  When client sends an update, apply it to the Yjs document
         ws.on('message', (message) => {
             const { type, payload } = decodeFrame(message);
             if (type === TYPE.UPDATE) {
                 this.applyUpdate(payload, ws);
+            }
+            else if (type === TYPE.AWARENESS) {
+                this.applyAwareness(payload, ws);
             }
         });
     }
@@ -54,6 +62,34 @@ class Room {
             if (client !== originws && client.readyState === WebSocket.OPEN) {
                 client.send(msg);
             }
+        }
+    }
+
+    applyAwareness(payload, ws) {
+        try {
+            const state = JSON.parse(Buffer.from(paload).toString());
+            this.awarenessStates.set(ws, state);
+            this.broadcastAwareness(ws);
+        } catch (err) {
+            console.error("Invalid awareness payload", err);
+        }
+    }
+
+    broadcastAwareness(originws = null) {
+        const allStates = [...this.awarenessStates.values()];
+        const buf = encodeFrame(TYPE.AWARENESS, Buffer.from(JSON.stringify(allStates)));
+        for (const client of this.clients) {
+            if (client !== originws && client.readyState === WebSocket.OPEN) {
+                client.send(buf);
+            }
+        }
+    }
+
+    sendAwareness(ws) {
+        const allStates = [...this.awarenessStates.values()];
+        const buf = encodeFrame(TYPE.AWARENESS, Buffer.from(JSON.stringify(allStates)));
+        if (ws.readyState === WebSocket.OPEN) {
+            ws.send(buf);
         }
     }
 
