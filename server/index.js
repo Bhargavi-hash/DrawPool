@@ -1,4 +1,4 @@
-import WebSocket from 'ws';
+import {WebSocketServer} from 'ws';
 import http from 'http';
 import Room from './ws/room.js';
 
@@ -13,7 +13,7 @@ const server = http.createServer((req, res) => {
   res.end();
 });
 // Create a WebSocket server
-const wss = new WebSocket.Server({ server });
+const wss = new WebSocketServer({ server });
 
 const rooms = new Map(); // Map to hold rooms by name
 

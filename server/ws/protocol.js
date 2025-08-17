@@ -18,14 +18,14 @@
 // 2. length — a 32-bit unsigned integer in big-endian order telling how many bytes are in the payload.
 // 3. payload — raw binary data (Uint8Array) containing a Yjs update.
 
-const TYPE = {
+export const TYPE = {
     SYNC_STATE: 0x01,
     UPDATE: 0x02
 }
 
 // Encode: frame
-function encodeFrame(type, payload) {
-    const len = payload.lenght >>> 0;
+export function encodeFrame(type, payload) {
+    const len = payload.length >>> 0;
     const header = Buffer.alloc(5);
     header.writeUInt8(type, 0);
     header.writeUInt32BE(len, 1);
@@ -39,24 +39,19 @@ function encodeFrame(type, payload) {
 // full frame = header + payload bytes
 
 //  Decode: frame
-function decodeFrame(buffer) {
-    if (buffer.length < 5) {
-        throw new Error('Invalid frame'); // Too small to contain a header
-    }
-    const type = buffer.readUInt8(0); // read 1 byte type
-    const len = buffer.readUInt32BE(1); // read length (4 bytes)
-    if (buffer.length < 5 + len) {
-        throw new Error('Invalid frame'); // Incomplete message
-    }
-    const payload = buffer.subarray(5, 5 + len); // Grab payload slice
+export function decodeFrame(buffer) {
+    const buf = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer); // ensure Node Buffer
+    if (buf.length < 5) throw new Error('Invalid frame');
+
+    const type = buf.readUInt8(0);
+    const len = buf.readUInt32BE(1);
+
+    if (buf.length < 5 + len) throw new Error('Incomplete frame');
+
+    const payload = buf.subarray(5, 5 + len);
     return { type, payload: new Uint8Array(payload) };
 }
 
-export default {
-    TYPE,
-    encodeFrame,
-    decodeFrame
-};
 
 // Why not just send JSON?
 // Two reasons:

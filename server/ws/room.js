@@ -12,8 +12,8 @@
 
 // [Client A] --> (update) --> [Room Doc] --> (broadcast) --> [Client B, Client C, ...]
 
-import Y from 'yjs';
-import { TYPE, encodeFrame, decodeFrame } from './protocol';
+import * as Y from 'yjs';
+import { TYPE, encodeFrame, decodeFrame } from './protocol.js';
 
 class Room {
     constructor(name) {
