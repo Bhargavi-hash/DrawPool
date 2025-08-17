@@ -15,11 +15,11 @@
 import * as Y from 'yjs';
 import WebSocket from 'ws';
 import { TYPE, encodeFrame, decodeFrame } from './protocol.js';
-import { createClient } from 'redis';
+// import { createClient } from 'redis';
 
 // Single Redis connection shared by all rooms
-const redis = createClient();
-redis.connect().catch(console.error);
+// const redis = createClient();
+// redis.connect().catch(console.error);
 
 class Room {
     constructor(name) {
@@ -28,39 +28,39 @@ class Room {
         this.clients = new Set(); // track connected websocket clients
         this.awarenessStates = new Map(); // ws -> awareness state
 
-        this.ready = this.loadFromRedis();
+        // this.ready = this.loadFromRedis();
 
         // Whenever Y.doc changes, store incremental update in Redis.
-        this.doc.on('update', (update) => {
-            this.storeUpdate(update);
-        });
+        // this.doc.on('update', (update) => {
+        //     this.storeUpdate(update);
+        // });
     }
 
-    redisKey() {
-        return `room:${this.name}`;
-    }
+    // redisKey() {
+    //     return `room:${this.name}`;
+    // }
 
-    async loadFromRedis() {
-        try {
-            const updates = await redis.lRange(this.redisKey(), 0, -1);
-            for (const u in updates) {
-                const buf = new Uint8Array(Buffer.from(u, 'base64'));
-                Y.applyUpdate(this.doc, buf);
-            }
-            console.log(`[Room ${this.name}] Restored ${updates.length} updates from Redis`);
-        } catch (err) {
-            console.error(`[Room ${this.name}] Failed to load from Redis`, err);
-        }
-    }
+    // async loadFromRedis() {
+    //     try {
+    //         const updates = await redis.lRange(this.redisKey(), 0, -1);
+    //         for (const u in updates) {
+    //             const buf = new Uint8Array(Buffer.from(u, 'base64'));
+    //             Y.applyUpdate(this.doc, buf);
+    //         }
+    //         console.log(`[Room ${this.name}] Restored ${updates.length} updates from Redis`);
+    //     } catch (err) {
+    //         console.error(`[Room ${this.name}] Failed to load from Redis`, err);
+    //     }
+    // }
 
-    async storeUpdate(update) {
-        try {
-            const buf = Buffer.from(update);
-            await redis.rPush(this.redisKey(), buf.toString('base64'));
-        } catch (err) {
-            console.error(`[Room ${this.name}] Failed to store update in Redis`, err);
-        }
-    }
+    // async storeUpdate(update) {
+    //     try {
+    //         const buf = Buffer.from(update);
+    //         await redis.rPush(this.redisKey(), buf.toString('base64'));
+    //     } catch (err) {
+    //         console.error(`[Room ${this.name}] Failed to store update in Redis`, err);
+    //     }
+    // }
 
     // Add a new client to the room
     addClient(ws) {
