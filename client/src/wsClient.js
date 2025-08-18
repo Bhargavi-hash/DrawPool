@@ -14,6 +14,7 @@ export async function connectWS(doc, roomName) {
   // When doc updates, send Yjs update frames to the server
   doc.on('update', update => {
     ws.send(encodeFrame(TYPE.UPDATE, new Uint8Array(update)));
+    console.log('Sent update to server');
   });
 
   // Handle incoming frames from server
@@ -22,6 +23,7 @@ export async function connectWS(doc, roomName) {
     const { type, payload } = decodeFrame(buf);
     if (type === TYPE.SYNC_STATE || type === TYPE.UPDATE) {
       Y.applyUpdate(doc, payload);
+      console.log('Received update from server');
     }
   });
 
