@@ -2,9 +2,11 @@ import * as Y from 'yjs';
 import { connectWS } from './wsClient.js';
 
 (async () => {
+  // Load Fabric (Vite/ESM friendly)
   const fabricModule = await import('fabric');
   const fabric = fabricModule.fabric || fabricModule;
 
+  // ---- 1) Fabric setup ----
   const canvas = new fabric.Canvas('canvas', { isDrawingMode: true });
 
   const brush = new fabric.PencilBrush(canvas);
@@ -12,48 +14,64 @@ import { connectWS } from './wsClient.js';
   brush.color = '#000';
   canvas.freeDrawingBrush = brush;
 
+  // ---- 2) Yjs doc + strokes array ----
   const doc = new Y.Doc();
-  const ymap = doc.getMap('drawing');
+  const strokes = doc.getArray('strokes'); // append-only log of strokes
 
-  // --- Rebuild canvas when Yjs updates (from others) ---
-  ymap.observe(event => {
-    if (event.transaction.origin === 'local') {
-      console.log('[Yjs] Skipping local update');
-      return;
-    }
-
-    const json = ymap.get('canvas');
-    if (!json) return;
-
-    console.log('[Yjs] Update from others:', json);
-    canvas.clear();
-
-    const data = typeof json === 'string' ? JSON.parse(json) : json;
-
-    // Build each object manually (we only handle paths here)
-    if (Array.isArray(data.objects)) {
-      data.objects.forEach(obj => {
-        if (obj.type === 'path' || obj.type === 'Path') {
-          const path = new fabric.Path(obj.path, obj);
-          canvas.add(path);
-        } else {
-          console.warn('[Fabric] Unknown type:', obj.type);
-        }
-      });
-    }
+  // Helper: add a single stroke object to canvas
+  function addStrokeToCanvas(strokeObj) {
+    // Expecting { type: 'path', path: [...], stroke, strokeWidth, left, top, ... }
+    const { path, type, ...opts } = strokeObj;
+    if (!path) return;
+    const pathObj = new fabric.Path(path, opts);
+    canvas.add(pathObj);
     canvas.renderAll();
-    console.log('[Fabric] Canvas rebuilt:', canvas.getObjects());
+  }
+
+  // ---- 3) Initial render (existing strokes) ----
+  // In case the room already has data when we join.
+  for (const s of strokes.toArray()) {
+    addStrokeToCanvas(s);
+  }
+
+  // ---- 4) React to remote inserts only ----
+  strokes.observe(event => {
+    // If this transaction was created locally, skip (we already drew it)
+    if (event.transaction.origin === 'local') return;
+
+    // Walk the delta to find inserted strokes
+    event.changes.delta.forEach(d => {
+      if (d.insert) {
+        for (const s of d.insert) {
+          addStrokeToCanvas(s);
+        }
+      }
+      // We’re not handling delete/retain yet; that’ll come with undo/eraser.
+    });
   });
 
-  // --- When you draw, send to Yjs ---
-  canvas.on('path:created', () => {
-    console.log('[Fabric] Path created!');
-    const json = JSON.parse(JSON.stringify(canvas.toObject(['path', 'stroke', 'strokeWidth', 'left', 'top', 'version'])));
-    console.log('[Yjs] Sending JSON:', json);
-    ymap.set('canvas', json, 'local');  // tag this as local
+  // ---- 5) On local stroke finish, append to Y.Array ----
+  canvas.on('path:created', (e) => {
+    // Fabric 6: the created object is e.path (fallback to e.target)
+    const obj = e.path || e.target;
+    if (!obj) return;
+
+    // Minimal, portable JSON for this path
+    const strokeJson = obj.toObject([
+      'path', 'stroke', 'strokeWidth', 'fill',
+      'left', 'top', 'scaleX', 'scaleY',
+      'skewX', 'skewY', 'flipX', 'flipY',
+      'originX', 'originY', 'angle', 'opacity', 'visible'
+    ]);
+    strokeJson.type = 'path';
+
+    // Use a transaction with origin='local' so our observer can ignore it
+    doc.transact(() => {
+      strokes.push([strokeJson]);
+    }, 'local');
   });
 
-  // --- Connect to backend ---
+  // ---- 6) Connect to backend (same as before) ----
   connectWS(doc, 'test').then(ws => {
     const statusEl = document.getElementById('status');
     ws.addEventListener('open', () => {
