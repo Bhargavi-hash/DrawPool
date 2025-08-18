@@ -115,7 +115,64 @@ This ensures **eventual consistency** across all clients.
 ---
 
 ## Data Flow Diagram
-TBD..
+```
+                                 +----------------+
+                                 |     AWS        |
+                                 |  (optional)    |
+                                 |  Load Balancer |
+                                 +--------+-------+
+                                          |
+                                          v
+                             +------------------------+
+                             |  WebSocket / Node.js   |
+                             |      Backend Server    |
+                             +------------------------+
+                             |  Room Manager / Y.Doc  |
+                             |  (1 per room)          |
+                             +------------------------+
+                                          |
+                 +------------------------+------------------------+
+                 |                                                 |
+                 v                                                 v
+        +----------------+                                +----------------+
+        | Redis Storage  |                                | Database (future) |
+        |  (persistent)  |                                |  optional        |
+        +----------------+                                +----------------+
+           ^           ^
+           |           |
+           |  Save / Load document snapshots (Yjs state)
+           |           |
+           +-----------+
+                  |
+     Yjs document sync (encoded updates, SYNC_STATE / UPDATE)
+                  |
+        +----------------+                 +----------------+
+        |  Browser User A|                 | Browser User B |
+        |  Fabric.js     |                 |  Fabric.js     |
+        |  Yjs Client    |                 |  Yjs Client    |
+        +----------------+                 +----------------+
+                 |                                  |
+                 | path:created / canvas updates    |
+                 |                                  |
+                 v                                  v
+          Canvas serialized JSON              Canvas serialized JSON
+          → update Yjs map                     → update Yjs map
+                 |                                  |
+                 +----------- WebSocket ---------->+
+                 |                                  |
+                 v                                  v
+         Backend Room Manager applies updates, broadcasts to all other clients
+                 |
+                 +---------------------------+
+                 |  Save latest document     |
+                 |  snapshot to Redis        |
+                 +---------------------------+
+                 |
+       Broadcast incremental updates (Yjs UPDATE) to all other connected clients
+                 |
+        Clients receive updates → update Yjs → re-render Fabric canvas
+
+```
 
 ## Setup and Run
 Download this repository manually or clone the repo using `git clone https://github.com/Bhargavi-hash/DrawPool.git`
