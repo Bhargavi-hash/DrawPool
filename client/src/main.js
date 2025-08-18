@@ -9,9 +9,13 @@ import { connectWS } from './wsClient.js';
   // ---- 1) Fabric setup ----
   const canvas = new fabric.Canvas('canvas', { isDrawingMode: true });
 
+  // ---- Assign random color per user ----
+  const userColor = '#' + Math.floor(Math.random()*16777215).toString(16);
+  console.log('[User] Assigned color:', userColor);
+
   const brush = new fabric.PencilBrush(canvas);
   brush.width = 4;
-  brush.color = '#000';
+  brush.color = userColor;
   canvas.freeDrawingBrush = brush;
 
   // ---- 2) Yjs doc + strokes array ----
