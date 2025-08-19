@@ -114,7 +114,7 @@ This ensures **eventual consistency** across all clients.
 
 ---
 
-## Data Flow Diagram
+## Data Flow
 ```
                                  +----------------+
                                  |     AWS        |
